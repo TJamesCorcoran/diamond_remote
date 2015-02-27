@@ -118,7 +118,7 @@ Here's how to download them:
     # get UPCs for a comic books
     #    (works via block)
     #
-    DiamondRemote.get_IC_UPCS(["JAN152621", "JAN151887", "JAN151886", "JAN151884", "JAN151883"] ) do |code, upc| 
+    DiamondRemote.get_IC_UPCS(["JAN152621", "JAN151887"] ) do |code, upc| 
       puts "#{code} #{upc}" 
     end
 
