@@ -2,7 +2,7 @@
 
 Diamond Comics is the primary comic book distributor in North America.
 
-This library helps retailer with a Diamond Comics account interact
+This Ruby / Rails library helps a retailer with a Diamond Comics account interact
 with the Diamond website.
 
 The API lets you:
@@ -13,21 +13,20 @@ The API lets you:
 
 == Installation
 
+1. add this to your Gemfile
 
-* add this to your Gemfile
-<code>
     gem "diamond_remote", :git =>"http://github.com/TJamesCorcoran/diamond_remote"
-</code>
 
-* at the command line type
-<code>
+
+2. at the command line type
+
     bundle install
-</code>
 
-* get a username, password, and customer number from Diamond Comics
 
-* add this to your config/application.rb
-<code>
+3. get a username, password, and customer number from Diamond Comics
+
+4. add this to your config/application.rb
+
     DiamondRemote.configure do |config|
       config.username                      = 'tru<x>'   
       config.password                      = '<y>'
@@ -35,7 +34,7 @@ The API lets you:
       config.firm_name_at_diamond          = /FIRM NAME AS REGEXP/
       config.download_dir                  = "#{Rails.root}/lib/datafiles/"
     end
-</code>
+
 
 == Use: Download Data Files
 
@@ -45,98 +44,103 @@ Diamond supplied three data files.
 * master  - updated once per month; contains same items as previews, but w different fields
 * truall  - updated nightly; shows everything that is orderable or reorderable
 
-<code>
-       # download a "master" and a "preview" datafile from Diamond
-	   #
-       DiamondRemote.get_master(  "2015", "02")
-	   => #<File:/home/xxx//src/hiw/lib/datafiles//lib/datafiles/201502/master.csv> 
+Here's how to download them:
 
-       DiamondRemote.get_previews("2015", "02")
-       => #<File:/home/xxx//src/hiw/lib/datafiles//lib/datafiles/201502/previews.csv> 
+    
+    # download a "master" and a "preview" datafile from Diamond
+    #
+    DiamondRemote.get_master(  "2015", "02")
+    => #<File:/home/xxx/src/yyy/lib/datafiles//lib/datafiles/201502/master.csv> 
 
-	   # or get both at once
-	   #
-       DiamondRemote.get_both("2015", "02")
-	   => [ #<File...> , #<File..> ]
+    DiamondRemote.get_previews("2015", "02")
+    => #<File:/home/xxx/src/yyy/lib/datafiles//lib/datafiles/201502/previews.csv> 
 
-	   # or get both for current month
-       DiamondRemote.get_current()
-	   => [ #<File...> , #<File..> ]
+    # or get both at once
+    #
+    DiamondRemote.get_both("2015", "02")
+    => [ #<File...> , #<File..> ]
 
-	   # get and parse truall file
-	   DiamondRemote.get_truall()
-	   =>    [  {:code       =>"APR962656",
-                 :title      =>"CRIME SUSPENSTORIES #17",
-                 :price      =>"0000002.5000",
-                 :type       =>"1",
-                 :date       =>"09/13/96",
-                 :base_price =>"0000002.5000 ",
-                 :vendor     =>"WILLIAM M GAINES, VIA GEMSTONE ",
-                 :discount   =>"E"},
-                {:code       =>"STAR06965",
-                 :title      =>"LOVE & ROCKETS SC VOL 15 HERNANDEZ SATYRICON (MR) (O/A)",
-                 :price      =>"0000018.9500 ",
-                 :type       =>"3",
-                 :date       =>"09/30/97",
-                 :base_price =>"0000018.9500 ",
-                 :vendor     =>"FANTAGRAPHICS BOOKS",
-                 :discount   =>"E"},
-              ...
-              ]
+    # or get both for current month
+    DiamondRemote.get_current()
+    => [ #<File...> , #<File..> ]
 
-	   # download your invoices
-	   #
-	   DiamondRemote.invoices_download_all
-	    => { <Date-1> => <invoice-as-text>,
-             <Date-2> => <invoice-as-text>,
-             <Date-3> => <invoice-as-text>
-             ...
-            }
+    # get and parse truall file
+    DiamondRemote.get_truall()
+    =>    [  {:code       =>"APR962656",
+            :title      =>"CRIME SUSPENSTORIES #17",
+            :price      =>"0000002.5000",
+            :type       =>"1",
+            :date       =>"09/13/96",
+            :base_price =>"0000002.5000 ",
+            :vendor     =>"WILLIAM M GAINES, VIA GEMSTONE ",
+            :discount   =>"E"},
+           {:code       =>"STAR06965",
+            :title      =>"LOVE & ROCKETS SC VOL 15 HERNANDEZ SATYRICON (MR) (O/A)",
+            :price      =>"0000018.9500 ",
+            :type       =>"3",
+            :date       =>"09/30/97",
+            :base_price =>"0000018.9500 ",
+            :vendor     =>"FANTAGRAPHICS BOOKS",
+            :discount   =>"E"},
+         ...
+         ]
+
+    # download your invoices
+    #
+    DiamondRemote.invoices_download_all
+     => { <Date-1> => <invoice-as-text>,
+        <Date-2> => <invoice-as-text>,
+        <Date-3> => <invoice-as-text>
+        ...
+       }
 
 == Use: Get Release Dates, ISBNs, UPCs, and Cover Images 
 
-	   # find Diamond's release date for items, specifying them by their itemcodes
-	   #
-       DiamondRemote.get_diamond_release_dates(["JAN152628", "JAN152627"] )
-       => {"JAN152628"=>Wed, 04 Mar 2015, 
-            "JAN152627"=>Wed, 04 Mar 2015} 
+    # find Diamond's release date for items, specifying them by their itemcodes
+    #
+    DiamondRemote.get_diamond_release_dates(["JAN152628", "JAN152627"] )
+    => {"JAN152628"=>Wed, 04 Mar 2015, 
+       "JAN152627"=>Wed, 04 Mar 2015} 
 
-	   # get an image 
-	   #
-	   DiamondRemote.get_diamond_image("JAN152628", "/tmp/JAN152628.jpg") 
-       => "/tmp/JAN152628.jpg" 
+    # get an image 
+    #
+    DiamondRemote.get_diamond_image("JAN152628", "/tmp/JAN152628.jpg") 
+    => "/tmp/JAN152628.jpg" 
 
 
-	   # get ISBNs for graphic novels
-	   #    (works via block)
-	   #
-       DiamondRemote.get_GN_ISBNs(["AUG080052" , "JAN152628" ]) do |code, isbn| 
-	       puts "#{code} #{isbn}" 
-       end
+    # get ISBNs for graphic novels
+    #    (works via block)
+    #
+    DiamondRemote.get_GN_ISBNs(["AUG080052" , "JAN152628" ]) do |code, isbn| 
+      puts "#{code} #{isbn}" 
+    end
 
-	   # get UPCs for a comic books
-	   #    (works via block)
-	   #
-       DiamondRemote.get_IC_UPCS(["JAN152621", "JAN151887", "JAN151886", "JAN151884", "JAN151883"] ) do |code, upc| 
-	       puts "#{code} #{upc}" 
-       end
+    # get UPCs for a comic books
+    #    (works via block)
+    #
+    DiamondRemote.get_IC_UPCS(["JAN152621", "JAN151887", "JAN151886", "JAN151884", "JAN151883"] ) do |code, upc| 
+      puts "#{code} #{upc}" 
+    end
 
 == Use: Place Initial Orders and Reorders
 
-	   # find deadline for initial order
-	   #
-       DiamondRemote.get_order_deadline()
-       => ["FEB15", Mon, 02 Mar 2015] 
+    # find deadline for initial order
+    #
+    DiamondRemote.get_order_deadline()
+    => ["FEB15", Mon, 02 Mar 2015] 
 
-       # submit an initial order
-	   #
-       DiamondRemote.submit_initial!( { "JAN152628" => 1, "JAN152627" => 10 } )
-       => true
-	   
-       # submit a reorder
-	   #
-       DiamondRemote.submit_reorder!( { "JAN152628" => 1, "JAN152627" => 10 } )
-	   => true
-	   
-</code>
+    # submit an initial order
+    #
+    DiamondRemote.submit_initial!( { "JAN152628" => 1, "JAN152627" => 10 } )
+    => true
 
+    # submit a reorder
+    #
+    DiamondRemote.submit_reorder!( { "JAN152628" => 1, "JAN152627" => 10 } )
+    => true
+       
+== Support
+
+If you have features you need, or want other help building or
+maintaining your comics-based ecommerce site, please contact me a
+tjamescorcoran@gmail.com
