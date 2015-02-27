@@ -1,0 +1,3 @@
+module DiamondRemote
+  VERSION = "0.0.1"
+end
