@@ -2,12 +2,14 @@
 
 Diamond Comics is the primary comic book distributor in North America.
 
-This library helps an approved retailer with a Diamond Comics account interact with the Diamond website.
+This library helps retailer with a Diamond Comics account interact
+with the Diamond website.
 
-API includes:
+The API lets you:
 
-* download datafiles of upcoming comics
-*
+* download datafiles of upcoming comics & current Diamond inventory
+* download ISBNs, UPCs, cover images
+* place reorders and monthly initial orders.
 
 == Installation
 
