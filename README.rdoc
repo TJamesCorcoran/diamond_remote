@@ -23,9 +23,9 @@ The API lets you:
     bundle install
 
 
-3. get a username, password, and customer number from Diamond Comics
+3. get a username, password, and customer number from Diamond Comics.  
 
-4. add this to your config/application.rb
+4. Using credentials from previous step, add this to your config/application.rb
 
     DiamondRemote.configure do |config|
       config.username                      = 'tru<x>'   
@@ -35,6 +35,7 @@ The API lets you:
       config.download_dir                  = "#{Rails.root}/lib/datafiles/"
     end
 
+5. That's it.  You can now begin interacting with the Diamond website programatically.
 
 == Use: Download Data Files
 
@@ -50,10 +51,10 @@ Here's how to download them:
     # download a "master" and a "preview" datafile from Diamond
     #
     DiamondRemote.get_master(  "2015", "02")
-    => #<File:/home/xxx/src/yyy/lib/datafiles//lib/datafiles/201502/master.csv> 
+    => #<File:/home/xxx/src/yyy/lib/datafiles/lib/datafiles/201502/master.csv> 
 
     DiamondRemote.get_previews("2015", "02")
-    => #<File:/home/xxx/src/yyy/lib/datafiles//lib/datafiles/201502/previews.csv> 
+    => #<File:/home/xxx/src/yyy/lib/datafiles/lib/datafiles/201502/previews.csv> 
 
     # or get both at once
     #
