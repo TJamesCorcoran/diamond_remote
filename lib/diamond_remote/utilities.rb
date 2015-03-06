@@ -6,7 +6,14 @@ module DiamondRemote
   
   # attr accessor stuff
   @@logger = method(:puts)   
-#  cattr_accessor :logger
+
+  # works in a class, not a module
+  #   cattr_accessor :logger
+  # works in a module
+  #
+  def self.logger=(l) @@logger = l end
+  def self.logger()  @@logger end
+    
 
   private
   
@@ -163,7 +170,7 @@ module DiamondRemote
         f << ret
       end
     end
-    ret
+    [filename, ret]
   end
   
   # parse the file
@@ -257,9 +264,9 @@ module DiamondRemote
   # 2) parse it
   # 3) return an array of hashes; one data hash per item that Diamond has in inventory
   #
-  def self.get_truall(target_file)
-    get_truall_raw(target_file)
-    parse_truall(target_file)
+  def self.get_truall(filename = "/tmp/truall_#{String.random_alphanumeric}.txt")
+    get_truall_raw(filename)
+    parse_truall(filename)
   end
   
   
@@ -339,7 +346,11 @@ module DiamondRemote
           
           begin
             est_date = details["Est Ship Date"]
-            est_date = Date.strptime(est_date, "%m/%d/%Y")
+            if est_date.strip.upcase.match(/TBD/)
+              est_date = Date.today + 365
+            else
+              est_date = Date.strptime(est_date, "%m/%d/%Y")
+            end
           rescue Exception => e
             raise "DATE PROBLEM: #{est_date}"
           end
