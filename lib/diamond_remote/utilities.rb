@@ -595,9 +595,9 @@ module DiamondRemote
       end
       
     end
-    
-    return true
-    
+
+    order_results
+
   end
   
 
