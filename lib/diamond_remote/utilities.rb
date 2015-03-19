@@ -409,13 +409,14 @@ module DiamondRemote
   #   
   #
   def self.reorder_parse_page_results(page_index, confirm_page)
+    verbose = false
     
     # find the URL for the next page.  
     #
     # This is tricky.  The prev/next buttons in the page are javascript and replace text inline.
     # We hack this by reading their code.
     #
-    # 1) the page loads and defines javascript variables
+    # 1) the page loads and sets javascript variables
     #     var cartPageIndex = 1;
     #     var cartNextKey = "";
     #     var cartPrevKey = "";
@@ -449,22 +450,43 @@ module DiamondRemote
     # parse the results
     #
     results = []
-    table_rows = confirm_page.search("//table[@class='DisplayGrid']/tr")
-    
+
+    table_rows = confirm_page.search("//div[@class='ReorderCart_ItemsContainer']/table[@class='DisplayGrid']/tr")
+
+    open("/tmp/output.html", "w") { |f| f << confirm_page.body } # NOTFORCHECKIN
+
     ii = 0
-    table_rows.each do |row|
-      
-      next unless row.children[0].name = "td"
-      next unless row.children[0].text.strip.match(ITEM_CODE_REGEXP)
-      
+    table_rows.each_with_index do |row, ii|
+
+      puts "row #{ii}" if verbose
+      puts "---------" if verbose
+      tds = row.css("/td")
+      puts "TD COUNT = #{tds.count}" if verbose
+      next unless tds.size > 0
+
+      tds.each_with_index do |td, ii|
+        puts "TD[#{ii}] = #{td.text.strip}"  if verbose
+        puts " ... #{td.text.strip.match(ITEM_CODE_REGEXP).to_bool}"         if ii == 0 && verbose
+      end
+
+      next unless tds[0].text.strip.match(ITEM_CODE_REGEXP)
+
       result = OpenStruct.new
-      result.item_code   = row.children[ 0].text.strip
-      result.description = row.children[ 4].text.strip
-      result.quantity    = row.children[ 6].text.strip
-      result.list_price  = row.children[ 8].text.strip
-      result.order_type  = row.children[14].text.strip
+
+
+      result.item_code   = tds[ 0].text.strip
+      # 1: discount code
+      result.description = tds[ 2].text.strip
+      result.quantity    = tds[ 3].text.strip
+      result.list_price  = tds[ 4].text.strip
+      # 5: purchase price
+      # 6: quant UNABLE to deliver
+      result.order_type  = tds[ 7].text.strip
+      # 8: buttons
+
       result.confirmed = SUCCESS_EXPRESSIONS.any? { |re| re.match(result.order_type) }
       raise "Unknown Diamond status #{result.order_type}" unless result.confirmed || FAILURE_EXPRESSIONS.any? { |re| re.match(result.order_type) }
+
       results << result
       
       ii += 1
@@ -485,11 +507,14 @@ module DiamondRemote
   #
   # testing:
   #
-  #    reorder_items = SuggestedOrder.last.suggested_order_items[0,50] ; reorder_items.size
-  #    DiamondRemote.submit_reorder!(reorder_items)
-  
-  def self.submit_reorder!(reorder_items)
+  #    reorder_items      = SuggestedOrder.last.suggested_order_items[0,50] ; reorder_items.size
+  #    code_to_quant_hash = reorder_items.map { |soi| [soi.item_code.code, soi.quantity ]}.to_h
+  #    DiamondRemote.submit_reorder!(code_to_quant_hash)
+  #
+  def self.submit_reorder!(code_to_quant_hash)
     
+    raise "illegal input" unless code_to_quant_hash.is_a?(Hash)
+
     @@logger.call("* using Mechanize version: #{Mechanize::VERSION}")
     
     order_results = []
@@ -521,7 +546,8 @@ module DiamondRemote
       reorders_upload_form.radiobuttons.select { |f| f.name == 'ReviewBeforePost'}[1].check
       
       # Specify the contents of the "file" we wish to upload
-      upload_data = reorder_items.map { |code, quant| "#{code},#{quant}\n" }.join ; nil
+      upload_data = code_to_quant_hash.map { |code, quant| "#{code},#{quant}\n" }.join ; nil
+
       # @@logger.call("* Placing diamond reorder for these items:\n\n#{upload_data}")
       reorders_upload_form.file_uploads.select { |f| f.name == 'ReorderFile'}.first.file_data = upload_data
       reorders_upload_form.file_uploads.select { |f| f.name == 'ReorderFile'}.first.file_name = "#{Time.now.strftime('%y%m%d%H%M')}.txt"
@@ -530,13 +556,20 @@ module DiamondRemote
       #----------
       # step 2: POST upload page 
       #
-      @@logger.call("* 2: GET upload page")
+      @@logger.call("* 2: POST upload page")
       confirm_page = @@agent.submit(reorders_upload_form, reorders_upload_form.buttons.first )
       
       @@logger.call("* title of review start page: #{confirm_page.title}")
       gold_title = "DCD Retailer Services - Reorder - Upload Complete"
       raise "reorder already in progress" if confirm_page.body.match(/ERROR: cannot import/)
-      raise "invalid reorders confirm page - expecting title '#{gold_title}'; got '#{reorders_upload_page.title}'" unless confirm_page.title == gold_title
+      if confirm_page.body.match(/PageError/)
+        error_div = confirm_page.search("//div[@class='PageError']")
+        error_text = error_div.text.strip
+        puts confirm_page.body.inspect
+        raise "Page error: #{error_text}"
+      end
+      raise "invalid reorders confirm page - expecting title '#{gold_title}'; got '#{reorders_upload_page.title}'"       unless confirm_page.title == gold_title
+
       
       error =  confirm_page.body.match(/(ERROR:.*)/)
       if error
