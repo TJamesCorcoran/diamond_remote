@@ -367,19 +367,25 @@ module DiamondRemote
   end
   
   
-  # Get the text version of the invoices and pull out cancellation information
+  # Get the text version of the invoices and pull out cancellation
+  # information
   #
+  # Return a hash ...
+  # 
   def self.get_cancellations
-    raise "You must supply a date as the :since argument to get_cancellations" if options[:since] && !options[:since].is_a?(Date)
     cancellations = {}
     login do
+
       # Get the page of invoices and find all the invoice links that
-      # meet our criteria, then download and process each page
+      # meet our criteria
       invoice_page = @@agent.get(INVOICES_URL)
       invoice_links = invoice_page.links.select { |link| link.href.andand.match(/Type=T/) }
+
+      # download and process each page
+      #
       invoice_links.each do |link|
         link_date = link.href[/InvDate=([0-9\/]+)/, 1]
-        next if link_date.nil? || (options[:since] && Date.parse(link_date) <= options[:since])
+        # next if link_date.nil? || (options[:since] && Date.parse(link_date) <= options[:since])
         cancellations[link_date] = []
         invoice = link.click.body
         invoice.each_line do |line|
@@ -388,7 +394,7 @@ module DiamondRemote
         end
       end
     end
-    return cancellations
+    cancellations
   end
   
   #==========
