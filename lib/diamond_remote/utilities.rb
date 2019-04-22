@@ -833,7 +833,7 @@ module DiamondRemote
       item_page = @@agent.get(url_for_itemcode(item_code))
       return nil if item_page.body.match(/could not be found/)
       begin
-        image_path = item_page.search("//a[@class='ImagePopup']").attribute("href").value
+        image_path = item_page.search("//a[@class='ImagePopup MainImagePopup']").attribute("href").value
         return nil unless image_path
       rescue Exception => e
         return nil
