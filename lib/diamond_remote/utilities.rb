@@ -954,7 +954,7 @@ module DiamondRemote
       
       due_date_info_str = due_date_info_noko.text.gsub(/\s+/," ").strip
       
-      ret = due_date_info_str.match(/^(#{ITEM_CODE_ROOT_REGEXP}) *initial orders.*\((.*)\)/)
+      ret = due_date_info_str.match(/^(#{ITEM_CODE_ROOT_REGEXP}) *initial orders.*\(By Friday (.*)\)/)
       item_code_root = $1
       due_date = $2
       due_date = Date.strptime(due_date, "%m/%d/%Y") # Date.parse(due_date)
