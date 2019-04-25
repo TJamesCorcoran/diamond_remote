@@ -308,9 +308,14 @@ module DiamondRemote
       ii += 1
       begin
         line = CSV.parse(csv_line, options).first
+
+        puts line
         
         line = line.to_hash
+        puts line
+
         line = line.map { |k, v| [k, v.strip] }.to_h
+        puts line
         
         # Remove the discount part of the code, if present
         line[:discount] = line[:code][9,line[:code].size-9] if line[:code] && line[:code].size > 9
