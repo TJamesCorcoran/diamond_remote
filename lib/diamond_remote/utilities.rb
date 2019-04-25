@@ -328,15 +328,14 @@ module DiamondRemote
     get_solicit_datafile(ARCHIVE_DOWNLOAD_URL_MASTER, get_filename_master(yr, month), yr, month)
   end
   
-  def self.get_previews(yr, month)
+  def self.get_preview(yr, month)
     get_solicit_datafile(ARCHIVE_DOWNLOAD_URL_PREVIEW, get_filename_preview(yr, month), yr, month)  
-    puts ARCHIVE_DOWNLOAD_URL_PREVIEW
   end
   
   def self.get_both(yr, month)
     raise "year must be over 2000 !" unless yr.to_i >= 2000
     master_file = get_master(yr, month)
-    previews_file = get_previews(yr, month)
+    previews_file = get_preview(yr, month)
     [ master_file, previews_file ]
   end
   
@@ -387,7 +386,7 @@ module DiamondRemote
   # 3) return an array of hashes; one data hash per item that Diamond has in previews file
   #
   #def self.get_truall(filename = "/tmp/truall_#{String.random_alphanumeric}.txt")
-  def self.get_preview_master(filename = "/tmp/preview_master_"+[*('a'..'z'),*('0'..'9')].shuffle[0,12].join+".csv")
+  def self.get_previews(filename = "/tmp/preview_master_"+[*('a'..'z'),*('0'..'9')].shuffle[0,12].join+".csv")
     get_preview_raw(filename)
     parse_previews_master(filename)
   end
