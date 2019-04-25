@@ -387,7 +387,7 @@ module DiamondRemote
   #
   #def self.get_truall(filename = "/tmp/truall_#{String.random_alphanumeric}.txt")
   def self.get_previews(filename = "/tmp/preview_master_"+[*('a'..'z'),*('0'..'9')].shuffle[0,12].join+".csv")
-    get_preview_raw(filename)
+    get_previews_raw(filename)
     parse_previews_master(filename)
   end
 
