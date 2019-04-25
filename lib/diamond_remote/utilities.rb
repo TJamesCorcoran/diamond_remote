@@ -306,24 +306,20 @@ module DiamondRemote
     ii = 0
     File.foreach(filename) do |csv_line|
       ii += 1
+      next if ii <= 1
       begin
         line = CSV.parse(csv_line, options).first
 
-        puts line
-        
         line = line.to_hash
-        puts line
-
-        line = line.map { |k, v| [k, v.strip] }.to_h
-        puts line
+        #line = line.map { |k, v| [k, v.strip] }.to_h
         
         # Remove the discount part of the code, if present
-        line[:discount] = line[:code][9,line[:code].size-9] if line[:code] && line[:code].size > 9
-        line[:code] = line[:code][0,9]
+        #line[:discount] = line[:code][9,line[:code].size-9] if line[:code] && line[:code].size > 9
+        #line[:code] = line[:code][0,9]
         
         ret << line
       rescue Exception => e
-        puts "Error on line #{ii} : #{e.message}" 
+       # puts "Error on line #{ii} : #{e.message}" 
       end
     end
     
