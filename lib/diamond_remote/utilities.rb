@@ -122,12 +122,13 @@ module DiamondRemote
     
     
     login do
-      open(local_file, "w") { |f| 
+      open(local_file, "w:UTF-8") { |f| 
         # Jan 2013:
         #     Diamond serves their data in ISO-8859-1 (similar to Latin-1? identical?)
         #     Ruby wants to store everything in UTF-8 (sliding-size Unicode)
         #           
-        data = @@agent.get_file(url).force_encoding('ISO-8859-1').encode("UTF-8")
+        #data = @@agent.get_file(url).force_encoding('ISO-8859-1').encode("UTF-8")
+        data = @@agent.get_file(url).force_encoding('ISO-8859-1')
         
         # data = @@agent.get_file(url)
         # ret = []
