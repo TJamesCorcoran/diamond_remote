@@ -279,7 +279,8 @@ module DiamondRemote
   def self.parse_previews_master(filename)
     
     options = { 
-      :col_sep => ",",
+      #:col_sep => ",",
+      :col_sep => "\t",
       :headers => [:code, :stock_no, :unknown, :unknown, :title, :description, :var_description, :series_code, :issue_no, :issue_seq_no, :unknown, :max_issue, :buy_price, :publisher, :upc, :isbn, :ean, :cards_per_pack, :pack_per_box, :box_per_case, :discount_code, :unknown, :print_date, :foc_vendor, :ship_date, :sell_price, :type, :genre, :brand_code, :mature, :adult, :unknown, :unknown, :unknown, :unknown, :unknown, :note_price, :order_form_notes, :page, :writer, :artist, :cover_artist, :colorist, :alliance_sku, :foc_date, :offered_date, :number_of_pages],
       :header_converters => :symbol
     }
