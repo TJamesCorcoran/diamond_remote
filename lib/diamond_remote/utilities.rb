@@ -1,6 +1,8 @@
 require 'mechanize'
 require 'ostruct'
 require 'csv'
+require 'base64'
+require 'open-uri'
 
 module DiamondRemote
   
@@ -33,6 +35,7 @@ module DiamondRemote
   DEFAULT_URL                   = 'https://retailerservices.diamondcomics.com/'
   INVOICES_URL                  = 'https://retailerservices.diamondcomics.com/MyAccount/Invoices/List'
   TRUALL_URL                    = 'https://retailerservices.diamondcomics.com/FileExport/main_dynamic_b/truall.csv'
+  PREVIEWS_MASTER_URL           = 'https://retailerservices.diamondcomics.com/FileExport/Misc/MasterDataFile-ITEMS.txt'
   CURRENT_URL_MASTER            = 'https://retailerservices.diamondcomics.com/FileExport/Misc/MasterDataFile-ITEMS.txt'
   CURRENT_URL_PREVIEW           = 'https://retailerservices.diamondcomics.com/FileExport/MonthlyToolsTXT/previewsDB.txt'
   ARCHIVE_DOWNLOAD_URL_MASTER   = "https://retailerservices.diamondcomics.com/Downloads/Archives/monthlytools/previews_master_data_file/MasterDataFile-Items_%4i%02i.txt"
@@ -119,12 +122,14 @@ module DiamondRemote
     
     
     login do
+      #open(local_file, "w:UTF-8") { |f| 
       open(local_file, "w") { |f| 
         # Jan 2013:
         #     Diamond serves their data in ISO-8859-1 (similar to Latin-1? identical?)
         #     Ruby wants to store everything in UTF-8 (sliding-size Unicode)
         #           
         data = @@agent.get_file(url).force_encoding('ISO-8859-1').encode("UTF-8")
+        #data = @@agent.get_file(url).force_encoding('ISO-8859-1')
         
         # data = @@agent.get_file(url)
         # ret = []
@@ -187,6 +192,8 @@ module DiamondRemote
     options = { 
       :col_sep => ",",
       :headers => [:code, :title, :unkown, :price, :type, :date, :unknown, :unknown, :base_price, :vendor]
+      #:headers => [:code, :title, :unkown, :price, :type, :date, :unknown, :unknown, :base_price, :vendor],
+      #:header_converters => :symbol
     }
     
     ret = []
@@ -228,7 +235,97 @@ module DiamondRemote
     ret
   end
   
+  #----------
+  # previews-master funcs
+  #
+  # Background:
+  #   Every month Diamond updates the master list of what is on previews world.
+  #   This file is known as 'MasterDataFile-ITEMS.txt'.
+  # https://retailerservices.diamondcomics.com/FileExport/Misc/MasterDataFile-ITEMS.txt
+  #----------
+  
+  # download the file
+  #
+  def self.get_previews_raw(filename = "/tmp/previews_master_#{String.random_alphanumeric}.csv")
+    ret = nil
+    login do
+      open(filename, "w") do |f|
+        ret = @@agent.get(PREVIEWS_MASTER_URL).body
+        f << ret
+      end
+    end
+    [filename, ret]
+  end
 
+  # 
+  # Category Code = Numeric. The Diamond category code, from Previews on Disk.
+  # 1     Comics - Black & White/Color
+  # 2     Magazines - Comics/Games/Sports
+  # 3     Books - Illustrated Comic Graphic Novels/Trade Paperbacks
+  # 4     Books - Science-Fiction/Horror/Novels
+  # 5     Games
+  # 6     Cards - Sports/Non-Sports
+  # 7     Novelties - Comic Material
+  # 8     Novelties - Non-Comic Material
+  # 9     Apparel - T-shirts/Caps
+  # 10    Toys and Models
+  # 11    Supplies - Card
+  # 12    Supplies - Comic
+  # 13    Retailers Sales Tools
+  # 14    Diamond Publications
+  # 15    Posters/Prints/Portfolios/Calendars
+  # 16    Video/Audio/Video Games
+    
+  def self.parse_previews_master(filename)
+    
+    options = { 
+      #:col_sep => ",",
+      :col_sep => "\t",
+      #:headers => [:code, :stock_no, :unknown, :unknown, :title, :description, :var_description, :series_code, :issue_no, :issue_seq_no, :unknown, :max_issue, :buy_price, :publisher, :upc, :isbn, :ean, :cards_per_pack, :pack_per_box, :box_per_case, :discount_code, :unknown, :print_date, :foc_vendor, :ship_date, :sell_price, :type, :genre, :brand_code, :mature, :adult, :unknown, :unknown, :unknown, :unknown, :unknown, :note_price, :order_form_notes, :page, :writer, :artist, :cover_artist, :colorist, :alliance_sku, :foc_date, :offered_date, :number_of_pages],
+      :headers => [:code, :stock_no, :unknown, :unknown, :title, :description, :var_description, :series_code, :issue_no, :issue_seq_no, :unknown, :max_issue, :buy_price, :publisher, :upc, :isbn, :ean, :cards_per_pack, :pack_per_box, :box_per_case, :discount_code, :unknown, :print_date, :foc_vendor, :ship_date, :sell_price, :type, :genre, :brand_code, :mature, :adult, :unknown, :unknown, :unknown, :unknown, :unknown, :note_price, :order_form_notes, :page, :writer, :artist, :cover_artist, :colorist, :alliance_sku, :foc_date, :offered_date, :number_of_pages]
+      #:header_converters => :symbol
+    }
+    
+    ret = []
+    
+    # the easy way to do this is
+    #
+    #     truall = File.read(filename)    
+    #     CSV.parse(truall, options) do |line|
+    #           ...
+    #      end
+    #
+    # ...but Diamond has poorly formatted data ( unescaped quotes ).
+    # We restructure the loop so that we can catch an explosion on one line.
+    #
+    # so see
+    #   http://stackoverflow.com/questions/14534522/ruby-csv-parsing-string-with-escaped-quotes
+    #
+    #
+    
+    ii = 0
+    File.foreach(filename) do |csv_line|
+      ii += 1
+      next if ii <= 1
+      begin
+        line = CSV.parse(csv_line, options).first
+
+        line = line.to_hash
+        #line = line.map { |k, v| [k, v.strip] }.to_h
+        
+        # Remove the discount part of the code, if present
+        #line[:discount] = line[:code][9,line[:code].size-9] if line[:code] && line[:code].size > 9
+        #line[:code] = line[:code][0,9]
+        
+        ret << line
+      rescue Exception => e
+       # puts "Error on line #{ii} : #{e.message}" 
+      end
+    end
+    
+    ret
+  end
+  
   public
   
   # yr - 4 digit
@@ -237,14 +334,14 @@ module DiamondRemote
     get_solicit_datafile(ARCHIVE_DOWNLOAD_URL_MASTER, get_filename_master(yr, month), yr, month)
   end
   
-  def self.get_previews(yr, month)
+  def self.get_preview(yr, month)
     get_solicit_datafile(ARCHIVE_DOWNLOAD_URL_PREVIEW, get_filename_preview(yr, month), yr, month)  
   end
   
   def self.get_both(yr, month)
     raise "year must be over 2000 !" unless yr.to_i >= 2000
     master_file = get_master(yr, month)
-    previews_file = get_previews(yr, month)
+    previews_file = get_preview(yr, month)
     [ master_file, previews_file ]
   end
   
@@ -260,15 +357,153 @@ module DiamondRemote
     [ master_file, preview_file ]
   end
   
+  # Get the current previews file
+  def self.get_current_previews
+    yr = (Date.today >> 1).year
+    mo = (Date.today >> 1).month
+    
+    preview_file = sprintf(archive_download_file_preview, yr, mo)
+    get_arbitrary(CURRENT_URL_PREVIEW, preview_file)
+    return preview_file
+  end
+
+  # Get the current master file
+  def self.get_current_master
+    yr = (Date.today >> 1).year
+    mo = (Date.today >> 1).month
+
+    master_file  = sprintf(archive_download_file_master, yr, mo)
+    get_arbitrary(CURRENT_URL_MASTER,  master_file)
+    return master_file
+  end
+
   # 1) download truall.txt from Diamond
   # 2) parse it
   # 3) return an array of hashes; one data hash per item that Diamond has in inventory
   #
-  def self.get_truall(filename = "/tmp/truall_#{String.random_alphanumeric}.txt")
+  #def self.get_truall(filename = "/tmp/truall_#{String.random_alphanumeric}.txt")
+  def self.get_truall(filename = "/tmp/truall_"+[*('a'..'z'),*('0'..'9')].shuffle[0,12].join+".txt")
     get_truall_raw(filename)
     parse_truall(filename)
   end
-  
+
+  # 1) download previews-master.txt from Diamond
+  # 2) parse it
+  # 3) return an array of hashes; one data hash per item that Diamond has in previews file
+  #
+  #def self.get_truall(filename = "/tmp/truall_#{String.random_alphanumeric}.txt")
+  def self.get_previews(filename = "/tmp/preview_master_"+[*('a'..'z'),*('0'..'9')].shuffle[0,12].join+".csv")
+    get_previews_raw(filename)
+    parse_previews_master(filename)
+  end
+
+	# Download truall file and then convert it to odoo csv format
+	def self.truall_to_odoo(filename = "/tmp/truall_"+[*('a'..'z'),*('0'..'9')].shuffle[0,12].join+".txt")
+	  get_truall_raw(filename)
+  	write_odoo_csv(filename)
+	end
+
+
+	# Write the truall file to a format that odoo can import directly  
+  def self.write_odoo_csv(filename)
+
+    parsed_truall = "/tmp/parsed_truall.csv"
+    
+    options = { 
+      :col_sep => ",",
+      :headers => [:code, :title, :unknown, :price, :type, :date, :unknown, :unknown, :base_price, :vendor, :upc, :unknown, :unknown, :unknown, :unknown, :unknown, :unknown, :unknown,]
+    }
+    ii = 0
+    CSV.open(parsed_truall, "wb", :write_headers => true, :headers => ["id", "name", "barcode", "list_price", "standard_price", "type"]) do |csv_file|
+      begin
+        CSV.foreach(filename, options) do |line|
+          ii += 1
+          begin        
+            # Remove the discount part of the code, if present
+            line[:discount] = line[:code][9,line[:code].size-9] if line[:code] && line[:code].size > 9
+            line[:code] = line[:code][0,9]
+
+            # line[:upc] = nil if line[:upc].nil? || line[:upc] == 0
+            line[:upc] = line[:upc].to_i.nonzero?
+
+            row_array = [line[:code], line[:title], line[:upc], line[:price].to_i, line[:price].to_i, "Stockable Product"]
+
+            csv_file << row_array
+          rescue Exception => e
+            puts "Error on line #{ii} : #{e.message}" 
+          end
+        end
+      rescue Exception => q
+        puts "Error on line #{ii} : #{q.message}"
+      end
+    end
+  end
+
+  ## 
+  # Make the inventory files from the invoices for diamond in odoo parsable
+  #
+  def self.write_inv_adj_csv(invoices)
+    
+    options = {
+      :col_sep => ",",
+      :headers => [:units, :id, :dc_code, :description, :full_price, :my_price, :total, :category_code, :order_type, :processed_as_field, :order_number, :upc, :isbn, :ean, :po_number, :allocated_code, :publisher]
+    }
+    invoices.each { |invoice|
+      ii = 0
+      begin
+        CSV.open(invoice+"_parsed_inv_file.csv", "wb", :write_headers => true, :headers => ["inventory_reference", "line_ids/product_qty", "line_ids/location_id/id", "line_ids/product_id/id", "line_ids/product_uom_id/id"]) do |inv_file|
+          CSV.foreach(invoice, options) do |line|
+            ii += 1
+            begin
+              #line[:name] = (ii > 1 ? nil : "First inventory import")
+              
+              inv_array = [nil, line[:units].to_i, "stock.stock_location_stock", line[:id], "product.product_uom_unit"]
+
+              inv_file << inv_array unless ii < 2
+            rescue Exception => e
+              puts "Error on line #{ii} : #{e.message}"
+            end
+          end
+        end
+      rescue Exception => e
+        puts "Error on line #{ii} : #{e.message}"
+      end
+    }
+  end
+
+  # Get each Invoice individually and download it.
+  # download each as a csv, return as files
+  #
+  def self.invoices_download_each
+    invoices = []
+    login do
+      
+      #----- 
+      # Get top-level page
+      #
+      invoice_page = @@agent.get(INVOICES_URL)
+      invoice_links = invoice_page.links.select { |link| link.href.andand.match(/Export\?CustNo.*Type=D/) }
+      invoice_links.each do |link|
+        
+        #-----
+        # download one invoice
+        #
+        link_date = link.href[/Export\?CustNo=#{config.custnumber}&InvDate=([0-9\/]+)/, 1]
+        invoice = link.click.body
+        filename = "#{config.download_dir}#{link_date}.csv"
+        invoices << filename
+        puts "Writing  #{link_date}.csv to #{filename}"
+        CSV.open(filename, "wb", :write_headers => true, :headers => ["Units Shipped", "id", "Discount Code", "Item Description", "Retail Price", "Unit Price", "Invoice Amount", "Category Code", "Order Type", "Processed Ass Field", "Order Number", "UPC", "ISBN", "EAN", "PO number", "Allocated Code"]) do |csv_file|
+          qq = 0
+          CSV.parse(invoice) do |line|
+            qq += 1
+            csv_file << line unless qq < 5
+          end
+        end
+      end
+    end
+    invoices
+  end
   
   #==========
   # invoices - WORKING 2012
@@ -297,6 +532,45 @@ module DiamondRemote
       end
     end
     invoices
+  end
+
+  def self.parse_invoices_for_odoo(invoices)
+
+    options = {
+      :col_sep => ",",
+      :headers => [:units, :id, :dc_code, :description, :full_price, :my_price, :total, :category_code, :order_type, :processed_as_field, :order_number, :upc, :isbn, :ean, :po_number, :allocated_code, :publisher]
+    }
+
+    invoices.each { |invoice|
+      ii = 0
+      begin
+        bad_fp = File.dirname(invoice)
+        CSV.open(invoice+"_parsed_for_odoo.csv", "wb", :write_headers => true, :headers => ["id", "name", "default_code", "barcode", "list_price", "standard_price", "type", "quantity_on_hand", "available_in_pos", "image"]) do |csv_file|
+          CSV.foreach(invoice, options) do |line|
+            ii += 1
+            begin
+              #if !line[:upc].to_i.nonzero?
+              #  line[:upc] = line[:isbn].to_i.nonzero? ? line[:isbn] : line[:ean]
+              #end
+              if line[:isbn].strip.empty?
+                line[:isbn] = !line[:upc].strip.empty? ? line[:upc] : line[:ean]
+              end
+              if line[:isbn].to_s.length == 16
+                line[:barcode] = line[:isbn].to_s.prepend("0")
+              else
+                line[:barcode] = line[:isbn]
+              end
+              ret = [line[:id], line[:description], line[:id], line[:barcode], line[:full_price].to_f, line[:my_price].to_f, "Stockable Product", line[:units], "True"]#, img]
+              csv_file << ret unless ii < 2
+            rescue Exception => e
+              puts "Error on line #{ii} : #{e.message}"
+            end
+          end
+        end
+      rescue Exception => q
+        puts "Error on invoice #{invoice} : #{q.message}"
+      end
+    }
   end
 
   #==========
@@ -833,7 +1107,7 @@ module DiamondRemote
       item_page = @@agent.get(url_for_itemcode(item_code))
       return nil if item_page.body.match(/could not be found/)
       begin
-        image_path = item_page.search("//a[@class='ImagePopup']").attribute("href").value
+        image_path = item_page.search("//a[@class='ImagePopup MainImagePopup']").attribute("href").value
         return nil unless image_path
       rescue Exception => e
         return nil
@@ -845,6 +1119,22 @@ module DiamondRemote
     end
     puts "* image saved to file #{local_name}" if verbose
     local_name
+  end
+
+  def self.get_diamond_image_uri(diamond_id)
+    verbose = false
+    login do
+      item_page = @@agent.get(url_for_itemcode(item_code))
+      return nil if item_page.body.match(/could not be found/)
+      begin
+        image_path = item_page.search("//a[@class='ImagePopup MainImagePopup']").attribute("href").value
+        return nil unless image_path
+      rescue Exception => e
+        return nil
+      end
+      img_url  = ROOT_URL + image_path
+    end
+    return img_url
   end
 
   private
@@ -957,7 +1247,9 @@ module DiamondRemote
       ret = due_date_info_str.match(/^(#{ITEM_CODE_ROOT_REGEXP}) *initial orders.*\((.*)\)/)
       item_code_root = $1
       due_date = $2
-      due_date = Date.strptime(due_date, "%m/%d/%Y") # Date.parse(due_date)
+      test_date = due_date.split(" ")[2..-1].join(" ")
+      # due_date = Date.strptime(due_date, "%m/%d/%Y") # Date.parse(due_date)
+      due_date = Date.strptime(test_date, "%m/%d/%Y") # Date.parse(due_date)
       ret = [item_code_root, due_date]
     end
     

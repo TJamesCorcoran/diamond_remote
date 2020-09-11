@@ -1,6 +1,6 @@
 source "https://rubygems.org"
 
-ruby '1.9.3'
+ruby '2.5.1'
 
 # Declare your gem's dependencies in diamond_remote.gemspec.
 # Bundler will treat runtime dependencies like base dependencies, and
